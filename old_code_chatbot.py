@@ -5,7 +5,7 @@ import google.generativeai as genai
 # -----------------------------
 # Load Excel
 # -----------------------------
-file_path = r"C:\Users\aditya.pandey4\Downloads\ManpowerPython_BI.xlsx"
+file_path = "ManpowerPython_BI.xlsx"
 
 df = pd.read_excel(file_path)
 
