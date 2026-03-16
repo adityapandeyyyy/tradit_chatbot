@@ -32,7 +32,7 @@ You are a professional AI assistant.
 # Streamlit UI
 # -----------------------------
 st.set_page_config(page_title="AI Data Assistant", layout="centered")
-st.title("📊 Manpower BI Assistant")
+st.title("📊 BI Assistant")
 
 # Load data
 try:
@@ -64,4 +64,4 @@ if query:
 
 # Footer info
 st.divider()
-st.caption("Powered by Gemini 1.5 Flash • Google GenAI SDK")
+st.caption(" For suggestions reach out to aditya.pandey4@jublfood.com")
