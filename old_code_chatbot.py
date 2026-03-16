@@ -1,51 +1,67 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # -----------------------------
-# Load Excel
+# Configuration & Caching
 # -----------------------------
-file_path = "ManpowerPython_BI.xlsx"
-
-df = pd.read_excel(file_path)
-
-documents = []
-
-for _, row in df.iterrows():
-    documents.append(str(row.to_dict()))
+# We cache the data loading so the Excel isn't re-read on every rerun
+@st.cache_data
+def load_excel_data(path):
+    df = pd.read_excel(path)
+    # Convert rows to a clean string format for the AI
+    return "\n".join([str(row.to_dict()) for _, row in df.iterrows()])
 
 # -----------------------------
-# Load Secret Key
+# Setup AI Client
 # -----------------------------
 api_key = st.secrets["GEMINI_API_KEY"]
+client = genai.Client(api_key=api_key)
 
-genai.configure(api_key=api_key)
-
-model = genai.GenerativeModel("gemini-1.5-flash")
+# Define the model and system-level rules
+# Using System Instructions is much more reliable than putting rules in the prompt
+SYSTEM_INSTRUCTION = """
+You are a professional AI assistant. 
+1. Answer questions ONLY using the provided Excel data.
+2. If the answer is not in the data, say "I'm sorry, that information is not in the records."
+3. Do NOT use outside knowledge or hallucinate.
+"""
 
 # -----------------------------
 # Streamlit UI
 # -----------------------------
-st.title("AI Assistant")
+st.set_page_config(page_title="AI Data Assistant", layout="centered")
+st.title("📊 Manpower BI Assistant")
 
-query = st.text_input("Ask AI")
+# Load data
+try:
+    context_data = load_excel_data("ManpowerPython_BI.xlsx")
+except FileNotFoundError:
+    st.error("Excel file not found. Please check 'ManpowerPython_BI.xlsx'.")
+    st.stop()
+
+query = st.text_input("What would you like to know about the manpower data?", 
+                     placeholder="e.g., How many employees are in Department X?")
 
 if query:
-    context = "\n".join(documents)
+    with st.spinner("Analyzing data..."):
+        # The latest SDK uses client.models.generate_content
+        response = client.models.generate_content(
+            model="gemini-flash-latest",
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                temperature=0.1,  # Lower temperature = more factual/less creative
+            ),
+            contents=[
+                f"Data Context:\n{context_data}",
+                f"User Question: {query}"
+            ]
+        )
 
-    prompt = f"""
-You are an AI assistant. Do NOT hallucinate.
+    st.subheader("Answer")
+    st.markdown(response.text)
 
-Answer ONLY from the Excel data below.
-
-Context:
-{context}
-
-Question:
-{query}
-"""
-
-    response = model.generate_content(prompt)
-
-    st.write("Answer")
-    st.write(response.text)
+# Footer info
+st.divider()
+st.caption("Powered by Gemini 1.5 Flash • Google GenAI SDK")
