@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 from google import genai
@@ -6,6 +7,7 @@ from google.genai import types
 # -----------------------------  
 # Configuration & Caching
 # -----------------------------
+# We cache the data loading so the Excel isn't re-read on every rerun
 @st.cache_data
 def load_excel_data(path):
     df = pd.read_excel(path)
@@ -15,10 +17,11 @@ def load_excel_data(path):
 # -----------------------------
 # Setup AI Client
 # -----------------------------
-# Ensure GEMINI_API_KEY is set in your .streamlit/secrets.toml
 api_key = st.secrets["GEMINI_API_KEY"]
 client = genai.Client(api_key=api_key)
 
+# Define the model and system-level rules
+# Using System Instructions is much more reliable than putting rules in the prompt
 SYSTEM_INSTRUCTION = """
 You are a professional AI assistant. 
 1. Answer questions ONLY using the provided Excel data.
@@ -44,12 +47,12 @@ query = st.text_input("What would you like to know about the manpower data?",
 
 if query:
     with st.spinner("Analyzing data..."):
-        # API Call
+        # The latest SDK uses client.models.generate_content
         response = client.models.generate_content(
-            model="gemini-3-flash-latest",
+            model="gemini-flash-latest",
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.1,  # Keep it factual
+                temperature=0.1,  # Lower temperature = more factual/less creative
             ),
             contents=[
                 f"Data Context:\n{context_data}",
@@ -57,30 +60,11 @@ if query:
             ]
         )
 
-    # Display the AI Answer
     st.subheader("Answer")
     st.markdown(response.text)
 
-    # --- TOKEN USAGE SECTION ---
-    st.divider()
-    st.subheader("Metadata & Usage")
-    
-    # Access usage_metadata from the response object
-    usage = response.usage_metadata
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Input Tokens", usage.prompt_token_count)
-    with col2:
-        st.metric("Output Tokens", usage.candidates_token_count)
-    with col3:
-        st.metric("Total Tokens", usage.total_token_count)
-    
-    # Optional: Progress bar showing how much of the context window is used
-    # Gemini 3 Flash has a 1M token context window
-    usage_pct = (usage.total_token_count / 1000000) * 100
-    st.progress(usage_pct / 100, text=f"Context Window Usage: {usage_pct:.4f}%")
-
 # Footer info
 st.divider()
-st.caption("For suggestions reach out to aditya.pandey4@jublfood.com")
+st.caption(" For suggestions reach out to aditya.pandey4@jublfood.com")
+
+
