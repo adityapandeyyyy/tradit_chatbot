@@ -3,7 +3,7 @@ import pandas as pd
 from google import genai
 from google.genai import types
 
-# -----------------------------
+# -----------------------------  
 # Configuration & Caching
 # -----------------------------
 # We cache the data loading so the Excel isn't re-read on every rerun
@@ -62,6 +62,9 @@ if query:
     st.subheader("Answer")
     st.markdown(response.text)
 
-# Footer info
-st.divider()
-st.caption(" For suggestions reach out to aditya.pandey4@jublfood.com")
+col1, col2, col3 = st.columns(3)
+col1.metric("Input Tokens", usage.prompt_token_count)
+col2.metric("Output Tokens", usage.candidates_token_count)
+col3.metric("Total Tokens", usage.total_token_count)
+
+
